@@ -1,0 +1,16 @@
+.room-container {
+    display: flex;
+    gap: 20px;
+  }
+  
+  .connection-info {
+    width: 30%;
+    padding: 10px;
+    background: #f4f4f4;
+    border-radius: 8px;
+  }
+  
+  .room-content {
+    width: 70%;
+  }
+  
