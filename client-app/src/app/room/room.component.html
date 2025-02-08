@@ -1,8 +1,7 @@
 <div class="room-container">
-  <!-- Левая часть: Информация о соединении -->
+  <!-- Логика для SignalR -->
   <div class="connection-info">
     <h3>Connection Info</h3>
-
     <h4>SignalR Connection</h4>
     <p *ngIf="isSignalRConnected; else signalRDisconnected">🟢 Connected</p>
     <ng-template #signalRDisconnected>
@@ -16,10 +15,9 @@
     </ng-template>
   </div>
 
-  <!-- Правая часть: Чат и работа с комнатой -->
+  <!-- Чат и действия -->
   <div class="room-content">
     <h2>Room Component</h2>
-
     <div>
       <input type="text" [(ngModel)]="roomName" placeholder="Enter room code" />
       <button (click)="joinRoom()">Join by Code</button>
@@ -30,7 +28,8 @@
     <hr />
 
     <textarea [(ngModel)]="newMessage" placeholder="Enter your message"></textarea>
-    <button (click)="sendMessage()">Send Message</button>
+    <button (click)="sendMessage()">Send Message via SignalR</button>
+    <button (click)="sendByP2P()">Send Message via P2P</button>
 
     <hr />
 

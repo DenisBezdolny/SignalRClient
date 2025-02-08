@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { WebSocketService } from '../services/websocket.service';
+import { WebSocketService, Participant } from '../services/websocket.service';
+import { P2PService } from '../services/p2p.service';  // Импортируем новый сервис P2P
 
 @Component({
   selector: 'app-room',
@@ -14,90 +15,105 @@ export class RoomComponent implements OnInit {
   public messages: string[] = [];
   public roomName: string = '';
   public newMessage: string = '';
-  public isSignalRConnected: boolean = false; // SignalR соединение
-  public isP2PConnected: boolean = false; // P2P соединение
-  public participants: string[] = [];
+  public isSignalRConnected: boolean = false;
+  public isP2PConnected: boolean = false;
+  public participants: Participant[] = [];
 
-  private peerConnection!: RTCPeerConnection; 
-
-  constructor(private webSocketService: WebSocketService) {}
+  constructor(
+    private webSocketService: WebSocketService,
+    private p2pService: P2PService  // Инжектируем P2P-сервис
+  ) {}
 
   ngOnInit(): void {
     this.webSocketService.startConnection();
 
-    this.setupPeerConnection();
-
-    // Подписка на обновления соединения через SignalR
+    // Подписка на состояние SignalR соединения
     this.webSocketService.connectionState$.subscribe((state) => {
       this.isSignalRConnected = state;
     });
 
-    // Подписка на входящие сообщения
+    // Подписка на состояние P2P соединения
+    this.p2pService.p2pConnected$.subscribe((state) => {
+      this.isP2PConnected = state;
+    });
+
+    // Подписка на входящие сообщения через SignalR
     this.webSocketService.onMessageReceived((sender: string, message: string) => {
       this.messages.push(`${sender}: ${message}`);
     });
+    // Подписка на P2P-сообщения из P2PService
+    this.p2pService.p2pMessageSubject.subscribe(({ senderId, message }) => {
+      // Добавляем полученное P2P-сообщение в список сообщений, помечая, что оно пришло по P2P
+      this.messages.push(`(P2P) ${senderId}: ${message}`);
+    });
+  
+    // Подписка на получение NAT-данных
+    this.webSocketService.onNATInfoReceived((connectionId: string, publicIp: string, publicPort: number) => {
+      console.log(`Получены NAT-данные: ${publicIp}:${publicPort} от ${connectionId}`);
+    });
 
-    // Подписка на обновления списка участников
-    this.webSocketService.onParticipantsUpdated((participants: string[]) => {
+    // Подписка на обновление списка участников
+    this.webSocketService.onParticipantsUpdated((participants: Participant[]) => {
       this.participants = participants;
+      
+      if (participants.length > 1) {
+        participants.forEach(participant => {
+          if (participant.id !== this.webSocketService.currentUserId) {
+            const publicIp = this.webSocketService.getPublicIpForParticipant(participant.id);
+            const publicPort = this.webSocketService.getPublicPortForParticipant(participant.id);
+            
+            if (publicIp && publicPort) {
+              ;  // Создаем P2P-соединение с каждым участником
+            }
+          }
+        });
+      }
     });
   }
 
-  joinRoom(): void {
+  public joinRoom(): void {
     if (this.roomName) {
-      this.webSocketService.joinRoom(this.roomName);
-
-      // Wait a bit and check if other users are in the room
-  setTimeout(() => {
-    const otherClients = this.webSocketService.getOtherClientsInRoom();
-    if (otherClients.length > 0) {
-      console.log(`📞 Calling peer: ${otherClients[0]}`);
-      this.webSocketService.callPeer(otherClients[0]);
-        }
-      }, 2000);
+      this.webSocketService.joinRoom(this.roomName)
+        .then(() => {
+          console.log(`✅ Успешно вошли в комнату: ${this.roomName}`);
+        })
+        .catch((err: Error) => console.error('❌ Ошибка входа в комнату:', err));
     }
   }
 
-  joinRandomRoom(): void {
-    this.webSocketService.joinRandomRoom();
-    
-    // Wait a bit and check if other users are in the room
-  setTimeout(() => {
-    const otherClients = this.webSocketService.getOtherClientsInRoom();
-    if (otherClients.length > 0) {
-      console.log(`📞 Calling peer: ${otherClients[0]}`);
-      this.webSocketService.callPeer(otherClients[0]);
-        }
-      }, 2000);
+  public joinRandomRoom(): void {
+    this.webSocketService.joinRandomRoom()
+      .then(() => {
+        console.log("✅ Подключены к случайной комнате");
+      })
+      .catch((err) => console.error('❌ Ошибка случайного подключения:', err));
   }
 
-  leaveRoom(): void {
+  public leaveRoom(): void {
     if (this.webSocketService.roomName) {
       this.webSocketService.leaveRoom(this.webSocketService.roomName);
     }
   }
 
   sendMessage(): void {
-    if (!this.webSocketService.roomName) {
-      console.error('Ошибка: roomName не задан!');
-      return;
-    }
     if (this.webSocketService.roomName && this.newMessage) {
       this.webSocketService.sendMessage(this.webSocketService.roomName, this.newMessage);
       this.newMessage = '';
     }
   }
 
-  private setupPeerConnection(): void {
-    this.peerConnection = new RTCPeerConnection();
+  sendByP2P(): void {
+    // Получаем всех других участников комнаты, кроме текущего
+    const otherClients = this.webSocketService.getOtherClientsInRoom();
   
-    this.peerConnection.addEventListener('iceconnectionstatechange', () => {
-      this.isP2PConnected = this.peerConnection.iceConnectionState === 'connected';
-    });
-  
-    this.peerConnection.addEventListener('connectionstatechange', () => {
-      this.isP2PConnected = this.peerConnection.connectionState === 'connected';
-    });
+    if (this.isP2PConnected && otherClients.length > 0) {
+      console.log("📡 Sending message via P2P:", this.newMessage);
+      // Отправляем сообщение через P2P
+      this.p2pService.sendMessage(otherClients[0].id, this.newMessage);  // Отправляем первому клиенту
+      this.newMessage = '';
+    } else {
+      console.error("❌ P2P-соединение не установлено или нет других участников.");
+    }
   }
   
 }
