@@ -7,6 +7,7 @@ import { WebSocketService } from './websocket.service';
 })
 export class P2PService {
   private peerConnections: { [id: string]: RTCPeerConnection } = {};
+  public currentUserP2PId: string | null = null;
   private dataChannels: { [id: string]: RTCDataChannel } = {};  // Добавляем хранилище для DataChannels
   private pendingIceCandidates: { [targetId: string]: RTCIceCandidateInit[] } = {};
   public p2pConnectedSubject = new BehaviorSubject<boolean>(false);
@@ -73,7 +74,6 @@ export class P2PService {
     };
   }
 
-
   // Создает и возвращает RTCPeerConnection
   public createPeerConnection(
     targetId: string,
@@ -86,6 +86,7 @@ export class P2PService {
     const config = { iceServers: [{ urls: this.stunServer }] };
     const peerConnection = new RTCPeerConnection(config);
     this.peerConnections[targetId] = peerConnection;
+    
     console.log(`[createPeerConnection] Инициализация PeerConnection для ${targetId}. ICE сервер: ${this.stunServer}`);
     
     console.log(`[createPeerConnection] Состояние соединения перед добавлением ICE кандидатов: ${peerConnection.iceConnectionState}`);
@@ -202,8 +203,6 @@ export class P2PService {
       console.log(`[flushPendingIceCandidates] Для ${targetId} нет отложенных кандидатов.`);
     }
   }
-  
-  
 
   public async handleReceivedOffer(senderId: string, offer: string): Promise<void> {
     console.log(`📩 Обработка предложения от ${senderId}`);
@@ -280,5 +279,27 @@ export class P2PService {
       console.error(`❌ Ошибка при установке удаленного описания (answer) для ${senderId}:`, error);
     }
   }
+
+  
+  public cleanupConnection(targetId: string): void {
+    console.log("Содержимое peerConnections:", Object.keys(this.peerConnections));
+    console.log("Переданная targetId:", targetId);
+    if (this.peerConnections[targetId]) {
+      console.log(`[cleanupConnection] Очистка соединения для ${targetId}`);
+      // Закрываем PeerConnection и DataChannel, если они существуют
+      if (this.dataChannels[targetId]) {
+        this.dataChannels[targetId].close();
+        delete this.dataChannels[targetId];
+      }
+      this.peerConnections[targetId].close();
+      delete this.peerConnections[targetId];
+    }
+    if (this.pendingIceCandidates[targetId]) {
+      delete this.pendingIceCandidates[targetId];
+    }
+  }
+  
+
+
 
 }

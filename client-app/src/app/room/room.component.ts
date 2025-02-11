@@ -55,19 +55,6 @@ export class RoomComponent implements OnInit {
     // Подписка на обновление списка участников
     this.webSocketService.onParticipantsUpdated((participants: Participant[]) => {
       this.participants = participants;
-      
-      if (participants.length > 1) {
-        participants.forEach(participant => {
-          if (participant.id !== this.webSocketService.currentUserId) {
-            const publicIp = this.webSocketService.getPublicIpForParticipant(participant.id);
-            const publicPort = this.webSocketService.getPublicPortForParticipant(participant.id);
-            
-            if (publicIp && publicPort) {
-              ;  // Создаем P2P-соединение с каждым участником
-            }
-          }
-        });
-      }
     });
   }
 
@@ -92,6 +79,10 @@ export class RoomComponent implements OnInit {
   public leaveRoom(): void {
     if (this.webSocketService.roomName) {
       this.webSocketService.leaveRoom(this.webSocketService.roomName);
+      // Пройтись по всем участникам и закрыть их соединения
+      this.participants.forEach((participant) => {
+        this.p2pService.cleanupConnection(participant.id);
+      });
     }
   }
 

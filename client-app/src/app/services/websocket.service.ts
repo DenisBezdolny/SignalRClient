@@ -42,7 +42,7 @@ export class WebSocketService {
   constructor() {
     console.log("Инициализация WebSocketService");
     this.connection = new signalR.HubConnectionBuilder()
-      .withUrl('https://localhost:7283/notifications')
+      .withUrl('https://023f-146-70-246-169.ngrok-free.app/notifications')
       .configureLogging(signalR.LogLevel.Information)
       .withAutomaticReconnect([0, 2000, 5000, 10000])
       .build();
