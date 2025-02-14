@@ -12,6 +12,7 @@ import { P2PService } from '../services/p2p.service';  // Импортируем
   imports: [CommonModule, FormsModule],
 })
 export class RoomComponent implements OnInit {
+  public maxSize: number = 8;
   public messages: string[] = [];
   public roomName: string = '';
   public newMessage: string = '';
@@ -75,6 +76,15 @@ export class RoomComponent implements OnInit {
       })
       .catch((err) => console.error('❌ Ошибка случайного подключения:', err));
   }
+
+  public createRoom(): void {
+    this.webSocketService.createRoom(this.maxSize)
+    .then(() => {
+      console.log("✅ Подключены к приватной комнате");
+    })
+    .catch((err) => console.error('❌ Ошибка создания приватной комнаты:', err));
+  }
+
 
   public leaveRoom(): void {
     if (this.webSocketService.roomName) {

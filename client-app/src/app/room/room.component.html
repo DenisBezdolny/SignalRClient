@@ -1,5 +1,5 @@
 <div class="room-container">
-  <!-- Логика для SignalR -->
+  <!-- SignalR Connection Info -->
   <div class="connection-info">
     <h3>Connection Info</h3>
     <h4>SignalR Connection</h4>
@@ -15,24 +15,33 @@
     </ng-template>
   </div>
 
-  <!-- Чат и действия -->
+  <!-- Chat and Actions -->
   <div class="room-content">
     <h2>Room Component</h2>
     <div>
+      <!-- Existing controls for joining/leaving rooms -->
       <input type="text" [(ngModel)]="roomName" placeholder="Enter room code" />
       <button (click)="joinRoom()">Join by Code</button>
       <button (click)="joinRandomRoom()">Join Random Room</button>
+      
+      <!-- New controls for creating a private room -->
+      <br />
+      <input type="number" [(ngModel)]="maxSize" placeholder="Enter max room size" />
+      <button (click)="createRoom()">Create Private Room</button>
+      
       <button (click)="leaveRoom()">Leave Room</button>
     </div>
 
     <hr />
 
+    <!-- Controls for sending messages -->
     <textarea [(ngModel)]="newMessage" placeholder="Enter your message"></textarea>
     <button (click)="sendMessage()">Send Message via SignalR</button>
     <button (click)="sendByP2P()">Send Message via P2P</button>
 
     <hr />
 
+    <!-- Display messages -->
     <h3>Messages</h3>
     <ul>
       <li *ngFor="let message of messages">{{ message }}</li>

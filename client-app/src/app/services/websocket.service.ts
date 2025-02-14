@@ -42,7 +42,7 @@ export class WebSocketService {
   constructor() {
     console.log("Инициализация WebSocketService");
     this.connection = new signalR.HubConnectionBuilder()
-      .withUrl('https://023f-146-70-246-169.ngrok-free.app/notifications')
+      .withUrl('https://localhost:7283/notifications')
       .configureLogging(signalR.LogLevel.Information)
       .withAutomaticReconnect([0, 2000, 5000, 10000])
       .build();
@@ -96,6 +96,16 @@ export class WebSocketService {
       .catch((err) => {
         console.error('❌ Ошибка случайного подключения:', err);
       });
+  }
+
+  public createRoom(maxSize: number): Promise<void>{
+    return this.connection.invoke('CreatePrivateRoom',maxSize)
+    .then(() => {
+      this.getPublicIP();
+    })
+    .catch((err) => {
+      console.error('❌ Ошибка случайного подключения:', err);
+    });
   }
 
   public leaveRoom(roomName: string): void {
